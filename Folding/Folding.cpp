@@ -9,7 +9,7 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
 {
   PolyMesh polyMesh;
   double halfang = tan(0.5*angle);
-  int maxCorrugations = 16; // a power of two ideally
+  int maxCorrugations = 256; // a power of two ideally. 128
   double scale = (0.5 / (double)maxCorrugations) * sin(angle);
 
   double yaw = 0;
@@ -60,10 +60,7 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
     } while (maxHeight > 0.5*scale + 0.0002 || minHeight < -0.5*scale - 0.0002);
     scale *= pow(2.0, yaw / pi);
     k++;
-    //    stringstream strstr;
-    //    strstr << "iterations" << k << ".ply";
-    //    polyMesh.save(strstr.str(), Vector3d((double)(k-1)*1.1,0,0));
-  } while (k < 2); //  (folds > 1);
+  } while (folds > 1);
 
   polyMesh.save(fileName, Vector3d(0, 0, 0));
 }
@@ -71,22 +68,40 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
 int _tmain(int argc, _TCHAR* argv[])
 {
   double bendAngle = pi / 12.0; // /16
-  for (int a = 3; a <= 3; a++)
+  int varyMode = 0; // 0 is nothing, 1 is vary bend angle, 2 is vary yaw angle
+  if (varyMode == 0)
+    generateCrumple("testply.ply", 2, 1, 0, bendAngle);
+  else if (varyMode == 1)
   {
-    int b = 1;
-    double c = 0;
-    if (a == 4)
+    for (int bend = 1; bend <= 4; bend++)
     {
-      a = 3;
-      b = 2;
-    }
-    if (a == 5)
-      c = (sqrt(5.0) + 1.0) / 2.0;
+      int a = 2;
+      int b = 1;
+      double c = 0;
 
-    stringstream strstr;
-    //    strstr << "bendangle" << a << ".ply";
-    strstr << "yawangle" << a << ".ply";
-    generateCrumple(strstr.str(), a, b, c, bendAngle);
+      stringstream strstr;
+      strstr << "bendangle" << bend << ".ply";
+      generateCrumple(strstr.str(), 2, 1, 0, (double)bend * pi/24.0);
+    }
+  }
+  else if (varyMode == 2)
+  {
+    for (int a = 1; a <= 5; a++)
+    {
+      int b = 1;
+      double c = 0;
+      if (a == 4)
+      {
+        a = 3;
+        b = 2;
+      }
+      if (a == 5)
+        c = (sqrt(5.0) + 1.0) / 2.0;
+
+      stringstream strstr;
+      strstr << "yawangle" << a << ".ply";
+      generateCrumple(strstr.str(), a, b, c, bendAngle);
+    }
   }
   return 0;
 }

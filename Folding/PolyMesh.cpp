@@ -112,18 +112,34 @@ PolyMesh::PolyMesh()
 void PolyMesh::save(const string &fileName, const Vector3d &offset)
 {
   ofstream myfile;
+#if defined(ASCII_SAVE)
   myfile.open(fileName.c_str());
+#else
+  myfile.open(fileName.c_str(), std::ios_base::binary);
+#endif
   myfile << "ply\n";
+#if defined(ASCII_SAVE)
   myfile << "format ascii 1.0\n";
+#else
+  myfile << "format binary_little_endian 1.0\n";
+#endif
   myfile << "element vertex " << nodes.size() << "\n";
   myfile << "property float x\n";
   myfile << "property float y\n";
   myfile << "property float z\n";
   myfile << "element face " << faces.size() << "\n";
-  myfile << "property list uchar int vertex_index\n";
+  myfile << "property list int int vertex_index\n";
   myfile << "end_header\n";
+#if defined(ASCII_SAVE)
   for (int i = 0; i < (int)nodes.size(); i++)
     myfile << nodes[i].pos[0]+offset[0] << " " << nodes[i].pos[1]+offset[1] << " " << nodes[i].pos[2]+offset[2] << "\n";
+#else
+  vector<Vector3f> vertices(nodes.size()); // 3d to give space for colour
+  for (unsigned int i = 0; i<nodes.size(); i++)
+    vertices[i] << (float)nodes[i].pos[0], (float)nodes[i].pos[1], (float)nodes[i].pos[2];
+  myfile.write((char *)&vertices[0], sizeof(Vector3f)*vertices.size());
+#endif
+#if defined(ASCII_SAVE)
   for (int i = 0; i < (int)faces.size(); i++)
   {
     int n = 1;
@@ -142,5 +158,26 @@ void PolyMesh::save(const string &fileName, const Vector3d &offset)
     } while (fn != faces[i].head);
     myfile << "\n";
   }
+#else
+  vector<int> facelist; // this is going to pad!
+  for (int i = 0; i < (int)faces.size(); i++)
+  {
+    int n = 1;
+    Face::FaceNode *fn = faces[i].head;
+    while (fn->next != faces[i].head)
+    {
+      n++;
+      fn = fn->next;
+    }
+    facelist.push_back(n);
+    fn = faces[i].head;
+    do
+    {
+      facelist.push_back(fn->nodeID);
+      fn = fn->next;
+    } while (fn != faces[i].head);
+  }
+  myfile.write((char *)&facelist[0], sizeof(int)*facelist.size());
+#endif
   myfile.close();
 }
