@@ -78,15 +78,30 @@ void PolyMesh::reflectFace(int faceID, const Vector3d &pos, const Vector3d &norm
     f = f->next;
   } while (f != my.head);
 }
-
 void PolyMesh::reflectNode(int i, const Vector3d &pos, const Vector3d &normal)
 {
   if ((nodes[i].pos - pos).dot(normal) < 0)
+  {
+    didReflect = true;
     nodes[i].pos -= normal * 2.0*(nodes[i].pos - pos).dot(normal);
+  }
 }
 
+bool PolyMesh::reflect(const Vector3d &pos, const Vector3d &normal)
+{
+  didReflect = false;
+  for (int i = 0; i<(int)nodes.size(); i++)
+    nodes[i].newNodesAdded.clear();
+  int numFaces = faces.size();
+  for (int i = 0; i<numFaces; i++)
+    reflectFace(i, pos, normal);
+  for (int i = 0; i < (int)nodes.size(); i++)
+    reflectNode(i, pos, normal);
+  return didReflect;
+}
 PolyMesh::PolyMesh()
 {
+  didReflect = false;
   Node n1;
   Node n2(Vector3d(0, 0, 0), Vector2d(0, 0));
   // initialise to a square, flat bit of paper

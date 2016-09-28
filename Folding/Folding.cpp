@@ -34,20 +34,23 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
 //  for (int j = 0; j < (int)polyMesh.nodes.size(); j++)
 //    polyMesh.nodes[j].pos[0] = offset[0] + (polyMesh.nodes[j].pos[0] - offset[0])/mult;
 
+  Matrix3d mat;
+  mat = AngleAxis<double>(angle, Vector3d::UnitY());
+  //   if (k == 0)
+  //     mat /= mult; // so all bend angles start with same number of folds...
+  mat *= mult;
+  Matrix3d matrot = mat*rot;
   int k = 0;
   int folds = 0;
+  double x = 0.0; // (double)(rand() % 1000) / 1000.0;
+  double y = 0.0; // (double)(rand() % 1000) / 1000.0;
+  Vector3d offset(x, y, 0);
+  vector <Node, Eigen::aligned_allocator<Node> > oldNodes;
   do
   {
-    Matrix3d mat;
-    mat = AngleAxis<double>(angle, Vector3d::UnitY());
- //   if (k == 0)
- //     mat /= mult; // so all bend angles start with same number of folds...
-    mat *= mult;
-    double x = 0.5; // (double)(rand() % 1000) / 1000.0;
-    double y = 0.5; // (double)(rand() % 1000) / 1000.0;
-    Vector3d offset(x, y, 0);
+    oldNodes = polyMesh.nodes;
     for (int j = 0; j < (int)polyMesh.nodes.size(); j++)
-      polyMesh.nodes[j].pos = offset + mat*rot*(polyMesh.nodes[j].pos - offset);
+      polyMesh.nodes[j].pos = offset + matrot*(polyMesh.nodes[j].pos - offset);
 
     double minHeight, maxHeight;
     folds = 0;
@@ -55,18 +58,21 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
     {
       minHeight = 1e10;
       maxHeight = 0;
-      polyMesh.reflect(Vector3d(0, 0, 0.5*scale), Vector3d(0, 0, -1));
-      polyMesh.reflect(Vector3d(0, 0, -0.5*scale), Vector3d(0, 0, 1));
+      bool reflect1 = polyMesh.reflect(Vector3d(0, 0, 0.5*scale), Vector3d(0, 0, -1));
+      bool reflect2 = polyMesh.reflect(Vector3d(0, 0, -0.5*scale), Vector3d(0, 0, 1));
+      if (!reflect1 && !reflect2)
+        break;
       for (int j = 0; j<(int)polyMesh.nodes.size(); j++)
       {
         minHeight = min(minHeight, polyMesh.nodes[j].pos[2]);
         maxHeight = max(maxHeight, polyMesh.nodes[j].pos[2]);
       }
       folds++;
-    } while (maxHeight > 0.5*scale + 0.0002 || minHeight < -0.5*scale - 0.0002);
+    } while (maxHeight > 0.5*scale + 0.00001 || minHeight < -0.5*scale - 0.00001);
     scale *= pow(2.0, yaw / pi);
     k++;
-  } while /*(k < maxK); */ (folds > 1);
+  } while /*(k < maxK); */ (folds > 0);
+  polyMesh.nodes = oldNodes;
 
   polyMesh.save(fileName, Vector3d(0, 0, 0));
 //  polyMesh.saveSVG(Vector3d(1.05*(double)(k - 1), 0, 0), 8);
@@ -76,11 +82,11 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-  double bendAngle = pi / 8.0; // /16
+  double bendAngle = pi / 24.0; // /16
   int varyMode = 0; // 0 is nothing, 1 is vary bend angle, 2 is vary yaw angle
   maxK = 7;
   if (varyMode == 0)
-    generateCrumple("crumple256-piby8.ply", 2, 1, 0, bendAngle);
+    generateCrumple("crumple256-piby24-offset.ply", 2, 1, 0, bendAngle);
   else if (varyMode == 1)
   {
 //    PolyMesh::openSVG("bendangles.svg", 2);

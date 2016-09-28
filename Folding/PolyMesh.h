@@ -28,20 +28,12 @@ struct Face
 struct PolyMesh
 {
   void reflectFace(int faceID, const Vector3d &pos, const Vector3d &normal);
-  void reflect(const Vector3d &pos, const Vector3d &normal)
-  {
-    for (int i = 0; i<(int)nodes.size(); i++)
-      nodes[i].newNodesAdded.clear();
-    int numFaces = faces.size();
-    for (int i = 0; i<numFaces; i++)
-      reflectFace(i, pos, normal);
-    for (int i = 0; i < (int)nodes.size(); i++)
-      reflectNode(i, pos, normal);
-  }
+  bool reflect(const Vector3d &pos, const Vector3d &normal); // returns if reflection happened
   void reflectNode(int i, const Vector3d &pos, const Vector3d &normal);
 
   vector<Node, Eigen::aligned_allocator<Node> > nodes;
   vector<Face> faces; // this is a list of edge indices per face
+  bool didReflect;
 
   PolyMesh();
 
