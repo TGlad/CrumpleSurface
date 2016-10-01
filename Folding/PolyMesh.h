@@ -33,7 +33,9 @@ struct PolyMesh
 
   vector<Node, Eigen::aligned_allocator<Node> > nodes;
   vector<Face> faces; // this is a list of edge indices per face
+  vector<Vector2d, Eigen::aligned_allocator<Vector2d> > firstEdges0, firstEdges1;
   bool didReflect;
+  bool findEdge;
 
   PolyMesh();
 
@@ -41,5 +43,7 @@ struct PolyMesh
   static void openSVG(const string &fileName, int number);
   void saveSVG(const Vector3d &offset, double shade);
   static void closeSVG();
+  void saveSVGEdge(const string &fileName, const vector<Vector2d, Eigen::aligned_allocator<Vector2d> > &edge0, const vector<Vector2d, Eigen::aligned_allocator<Vector2d> > &edge1);
   void checkFace(const Face &face);
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 };

@@ -6,10 +6,9 @@
 static const double pi = 3.14159265;
 static int maxK = 0;
 
-void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, double yawPiIrrationalDivide, double angle)
+void generateCrumple(const string &fileName, int maxCorrugations, int yawPiDivide, int yawPiMult, double yawPiIrrationalDivide, double angle)
 {
   PolyMesh polyMesh;
-  int maxCorrugations = 256; // a power of two ideally. 128
   double scale = (0.5 / (double)maxCorrugations) * sin(angle);
 
   double yaw = 0;
@@ -42,10 +41,11 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
   Matrix3d matrot = mat*rot;
   int k = 0;
   int folds = 0;
-  double x = 0.0; // (double)(rand() % 1000) / 1000.0;
-  double y = 0.0; // (double)(rand() % 1000) / 1000.0;
+  double x = 0.5; // (double)(rand() % 1000) / 1000.0;
+  double y = 0.5; // (double)(rand() % 1000) / 1000.0;
   Vector3d offset(x, y, 0);
   vector <Node, Eigen::aligned_allocator<Node> > oldNodes;
+  vector<Vector2d, Eigen::aligned_allocator<Vector2d> > edge0, edge1;
   do
   {
     oldNodes = polyMesh.nodes;
@@ -54,12 +54,26 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
 
     double minHeight, maxHeight;
     folds = 0;
+    cout << "k: " << k << endl;
     do
     {
       minHeight = 1e10;
       maxHeight = 0;
+      polyMesh.findEdge = folds==0;
       bool reflect1 = polyMesh.reflect(Vector3d(0, 0, 0.5*scale), Vector3d(0, 0, -1));
+      if (polyMesh.findEdge && reflect1 && k == 15)
+      {
+        cout << "setting edge 0 " << polyMesh.firstEdges0.size() << endl;
+        edge0 = polyMesh.firstEdges0;
+        edge1 = polyMesh.firstEdges1;
+      }
       bool reflect2 = polyMesh.reflect(Vector3d(0, 0, -0.5*scale), Vector3d(0, 0, 1));
+      if (polyMesh.findEdge && edge0.size() == 0 && reflect2 && k == 15)
+      {
+        cout << "setting edge 1 " << polyMesh.firstEdges0.size() << endl;
+        edge0 = polyMesh.firstEdges0;
+        edge1 = polyMesh.firstEdges1;
+      }
       if (!reflect1 && !reflect2)
         break;
       for (int j = 0; j<(int)polyMesh.nodes.size(); j++)
@@ -78,15 +92,16 @@ void generateCrumple(const string &fileName, int yawPiDivide, int yawPiMult, dou
 //  polyMesh.saveSVG(Vector3d(1.05*(double)(k - 1), 0, 0), 8);
 //  polyMesh.saveSVG(Vector3d(0, 0, 0), angle / (pi / 4.0));
 //  polyMesh.saveSVG(Vector3d(angle > pi/30.0 ? 1.05 : 0.0, 0, 0), 1.0);
+  polyMesh.saveSVGEdge(fileName, edge0, edge1);
 }
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-  double bendAngle = pi / 24.0; // /16
+  double bendAngle = pi / 6.0; // /16
   int varyMode = 0; // 0 is nothing, 1 is vary bend angle, 2 is vary yaw angle
   maxK = 7;
   if (varyMode == 0)
-    generateCrumple("crumple256-piby24-offset.ply", 2, 1, 0, bendAngle);
+    generateCrumple("div6128-15.svg", 128, 2, 1, 0, bendAngle);
   else if (varyMode == 1)
   {
 //    PolyMesh::openSVG("bendangles.svg", 2);
@@ -99,7 +114,7 @@ int _tmain(int argc, _TCHAR* argv[])
   //    double angle = bend == 1 ? pi / 36.0 : 8.0 * pi / 36.0;
       stringstream strstr;
       strstr << "bendangle" << bend << ".ply";
-      generateCrumple(strstr.str(), 2, 1, 0, (double)bend * pi / 24.0); 
+      generateCrumple(strstr.str(), 128, 2, 1, 0, (double)bend * pi / 24.0); 
       maxK++;
     }
  //   PolyMesh::closeSVG();
@@ -120,7 +135,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
       stringstream strstr;
       strstr << "yawangle" << a << ".ply";
-      generateCrumple(strstr.str(), a, b, c, bendAngle);
+      generateCrumple(strstr.str(), 128, a, b, c, bendAngle);
     }
   }
   return 0;
