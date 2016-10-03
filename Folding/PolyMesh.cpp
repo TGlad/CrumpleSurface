@@ -58,11 +58,6 @@ void PolyMesh::reflectFace(int faceID, const Vector3d &pos, const Vector3d &norm
       }
       if (s == 1) // connect to make a new face and reconnect the other face linked list
       {
-        if (findEdge)
-        {
-          firstEdges0.push_back(nodes[split[0]->nodeID].uv);
-          firstEdges1.push_back(nodes[split[1]->nodeID].uv);
-        }
         Face newFace;
         newFace.head = new Face::FaceNode;
         newFace.head->nodeID = split[0]->nodeID;
@@ -94,8 +89,6 @@ void PolyMesh::reflectNode(int i, const Vector3d &pos, const Vector3d &normal)
 
 bool PolyMesh::reflect(const Vector3d &pos, const Vector3d &normal)
 {
-  firstEdges0.clear();
-  firstEdges1.clear();
   didReflect = false;
   for (int i = 0; i<(int)nodes.size(); i++)
     nodes[i].newNodesAdded.clear();
@@ -133,6 +126,7 @@ PolyMesh::PolyMesh()
 }
 void PolyMesh::save(const string &fileName, const Vector3d &offset)
 {
+  cout << "saving to file " << fileName << endl;
   ofstream myfile;
 //#define ASCII_SAVE
 #if defined(ASCII_SAVE)
@@ -223,6 +217,7 @@ void PolyMesh::save(const string &fileName, const Vector3d &offset)
 #endif
 #endif
   myfile.close();
+  cout << "finished saving." << endl;
 }
 
 static ofstream svg;
@@ -252,15 +247,6 @@ void PolyMesh::saveSVG(const Vector3d &offset, double shade)
 
 void PolyMesh::closeSVG()
 {
-  svg << "</svg>" << endl;
-  svg.close();
-}
-void PolyMesh::saveSVGEdge(const string &fileName, const vector<Vector2d, Eigen::aligned_allocator<Vector2d> > &edge0, const vector<Vector2d, Eigen::aligned_allocator<Vector2d> > &edge1)
-{
-  svg.open(fileName.c_str());
-  svg << "<svg width = \"" << (int)(scale) << "\" height = \"" << (int)scale << "\" xmlns = \"http://www.w3.org/2000/svg\">" << endl;
-  for (int i = 0; i < (int)edge0.size(); i++)
-    svg << "<path d = \"M " << scale*edge0[i][0] << " " << scale*edge0[i][1] << " L " << scale*edge1[i][0] << " " << scale*edge1[i][1] << "\" fill=\"transparent\" stroke=\"black\" />\n";
   svg << "</svg>" << endl;
   svg.close();
 }
