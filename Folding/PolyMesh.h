@@ -37,7 +37,8 @@ struct PolyMesh
 
   PolyMesh();
 
-  void save(const string &filename, const Vector3d &offset);
+  void savePLY(const string &filename, const Vector3d &offset);
+  void saveOBJ(const string &filename, const Vector3d &offset);
   static void openSVG(const string &fileName, int number);
   void saveSVG(const Vector3d &offset, double shade);
   static void closeSVG();

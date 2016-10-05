@@ -5,6 +5,7 @@
 #include "PolyMesh.h"
 static const double pi = 3.14159265;
 static int maxK = 0;
+static bool saveObj = false;
 
 void generateCrumple(const string &fileName, int maxCorrugations, double bendAngleDegrees, int centreType, double yawAngleDegrees)
 {
@@ -103,8 +104,16 @@ void generateCrumple(const string &fileName, int maxCorrugations, double bendAng
   } while /*(k < maxK); */ (folds > 0);
   polyMesh.nodes = oldNodes;
 
-  polyMesh.save(fileName, Vector3d(0, 0, 0));
-//  polyMesh.saveSVG(Vector3d(1.05*(double)(k - 1), 0, 0), 8);
+  if (fileName.find(".obj") != string::npos)
+    polyMesh.saveOBJ(fileName, Vector3d(0, 0, 0));
+  else
+  {
+    if (fileName.find(".ply") != string::npos)
+      polyMesh.savePLY(fileName, Vector3d(0, 0, 0));
+    else
+      polyMesh.savePLY(fileName + ".ply", Vector3d(0, 0, 0));
+  }
+  //  polyMesh.saveSVG(Vector3d(1.05*(double)(k - 1), 0, 0), 8);
 //  polyMesh.saveSVG(Vector3d(0, 0, 0), angle / (pi / 4.0));
 //  polyMesh.saveSVG(Vector3d(angle > pi/30.0 ? 1.05 : 0.0, 0, 0), 1.0);
 }
@@ -119,7 +128,7 @@ int _tmain(int argc, _TCHAR* argv[])
   double irrationalPiDivisor = 0;
   int numCorrugations = 64;
   int centreType = 0;
-  string fileName = "crumple";
+  string fileName = "crumple.ply";
   for (int i = 1; i < argc; i++)
   {
     wstring warg = argv[i];
@@ -129,7 +138,7 @@ int _tmain(int argc, _TCHAR* argv[])
       cout << "crumpled surface mesh generator. Arguments:" << endl;
       cout << "-b - bend angle in degrees (45 is max), default 15" << endl;
       cout << "-y - yaw angle in degrees, default 90" << endl;
-      cout << "-f - file name, default crumple(.ply)" << endl;
+      cout << "-f - file name, default crumple.ply, use .obj to have texture coordinates" << endl;
       cout << "-c - number of highest resolution corrugations, default 64 (very slow beyond 256)" << endl;
       cout << "-t - centre type: 0. centred in the middle, 1. centred at 0,0, 2. random each level, default 0" << endl;
       cout << "-h - help" << endl;
@@ -146,6 +155,8 @@ int _tmain(int argc, _TCHAR* argv[])
       fileName = string(warg2.begin(), warg2.end());
     else if (arg == "-c")
       numCorrugations = stoi(warg2);
+    else if (arg == "-t")
+      centreType = stoi(warg2);
     else
     {
       cout << "unknown parameter, try -h for options" << endl;
@@ -154,7 +165,7 @@ int _tmain(int argc, _TCHAR* argv[])
   }
 
 #if !defined(TESTS)
-  generateCrumple(fileName + ".ply", numCorrugations, bendAngle, centreType, yawAngle);
+  generateCrumple(fileName, numCorrugations, bendAngle, centreType, yawAngle);
 #else
   double bendAngle = pi / 6.0; // /16
   int varyMode = 0; // 0 is nothing, 1 is vary bend angle, 2 is vary yaw angle

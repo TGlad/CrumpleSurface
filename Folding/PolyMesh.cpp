@@ -124,11 +124,11 @@ PolyMesh::PolyMesh()
   }
   fn->next = faces[0].head;
 }
-void PolyMesh::save(const string &fileName, const Vector3d &offset)
+void PolyMesh::savePLY(const string &fileName, const Vector3d &offset)
 {
   cout << "saving to file " << fileName << endl;
   ofstream myfile;
-//#define ASCII_SAVE
+#define ASCII_SAVE
 #if defined(ASCII_SAVE)
   myfile.open(fileName.c_str());
 #else
@@ -146,22 +146,14 @@ void PolyMesh::save(const string &fileName, const Vector3d &offset)
   myfile << "property float z\n";
   myfile << "element face " << faces.size() << "\n";
   myfile << "property list int int vertex_index\n";
-#if defined(TRY_TEXTURE_COORDS)
-  myfile << "property list int float texcoord\n";
-#endif
   myfile << "end_header\n";
 #if defined(ASCII_SAVE)
   for (int i = 0; i < (int)nodes.size(); i++)
     myfile << nodes[i].pos[0]+offset[0] << " " << nodes[i].pos[1]+offset[1] << " " << nodes[i].pos[2]+offset[2] << "\n";
 #else
   vector<Vector3f> vertices(nodes.size()); // 3d to give space for colour
-//#define SAVE_FLATTENED
   for (unsigned int i = 0; i<nodes.size(); i++)
-#if defined(SAVE_FLATTENED)
-    vertices[i] << (float)nodes[i].uv[0] + offset[0], (float)nodes[i].uv[1]+ offset[1], 0;
-#else
     vertices[i] << (float)nodes[i].pos[0]+offset[0], (float)nodes[i].pos[1]+offset[1], (float)nodes[i].pos[2]+offset[2];
-#endif
   myfile.write((char *)&vertices[0], sizeof(Vector3f)*vertices.size());
 #endif
 #if defined(ASCII_SAVE)
@@ -196,26 +188,45 @@ void PolyMesh::save(const string &fileName, const Vector3d &offset)
       fn = fn->next;
     }
     facelist.push_back(n);
-#if defined(TRY_TEXTURE_COORDS)
-    int m = n * 2;
-    uvlist.push_back(*(float *)&m);
-#endif
     fn = faces[i].head;
     do
     {
       facelist.push_back(fn->nodeID);
-#if defined(TRY_TEXTURE_COORDS)
-      uvlist.push_back(nodes[fn->nodeID].uv[0]);
-      uvlist.push_back(nodes[fn->nodeID].uv[1]);
-#endif
       fn = fn->next;
     } while (fn != faces[i].head);
   }
   myfile.write((char *)&facelist[0], sizeof(int)*facelist.size());
-#if defined(TRY_TEXTURE_COORDS)
-  myfile.write((char *)&uvlist[0], sizeof(float)*uvlist.size());
 #endif
-#endif
+  myfile.close();
+  cout << "finished saving." << endl;
+}
+void PolyMesh::saveOBJ(const string &fileName, const Vector3d &offset)
+{
+  cout << "saving to file " << fileName << endl;
+  ofstream myfile;
+  myfile.open(fileName.c_str());
+  for (int i = 0; i < (int)nodes.size(); i++)
+    myfile << "v " << nodes[i].pos[0] + offset[0] << " " << nodes[i].pos[1] + offset[1] << " " << nodes[i].pos[2] + offset[2] << "\n";
+  for (int i = 0; i < (int)nodes.size(); i++)
+    myfile << "vt " << nodes[i].uv[0] << " " << nodes[i].uv[1] << "\n";
+  for (int i = 0; i < (int)faces.size(); i++)
+  {
+    int n = 1;
+    Face::FaceNode *fn = faces[i].head;
+    while (fn->next != faces[i].head)
+    {
+      n++;
+      fn = fn->next;
+    }
+    myfile << "f ";
+    fn = faces[i].head;
+    do
+    {
+      myfile << fn->nodeID+1 << "/" << fn->nodeID+1 << " ";
+      fn = fn->next;
+    } while (fn != faces[i].head);
+    myfile << "\n";
+  }
   myfile.close();
   cout << "finished saving." << endl;
 }
