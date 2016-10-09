@@ -7,12 +7,11 @@ static const double pi = 3.14159265;
 static int maxK = 0;
 static bool saveObj = false;
 
-void generateCrumple(const string &fileName, int maxCorrugations, double bendAngleDegrees, int centreType, double yawAngleDegrees)
+void generateCrumple(const string &fileName, int maxCorrugations, double bendAngleDegrees, int centreType, double yawAngleDegrees, double aspectRatio)
 {
   cout << "building mesh " << fileName << " max corrugations: " << maxCorrugations << ", bend angle: " << bendAngleDegrees << ", yaw angle: " << yawAngleDegrees << ", centre type: " << centreType << endl;
   double angle = bendAngleDegrees * pi / 180.0;
   PolyMesh polyMesh;
-  double scale = (0.5 / (double)maxCorrugations) * sin(angle);
 
   // now convert yaw angle into a quotient (or not if it is apparently irrational):
   bool found = false;
@@ -45,37 +44,42 @@ void generateCrumple(const string &fileName, int maxCorrugations, double bendAng
     exponent /= (double)yawPiDivide;
   }
   double mult = 1.0 / pow(cos(angle), exponent);
+  double scale = (0.5 / (double)maxCorrugations) * sin(angle) * mult;
   Matrix3d rot;
   rot = AngleAxis<double>(yaw, Vector3d::UnitZ());
-
-//  Vector3d offset(0.5, 0.5, 0);
-//  for (int j = 0; j < (int)polyMesh.nodes.size(); j++)
-//    polyMesh.nodes[j].pos[0] = offset[0] + (polyMesh.nodes[j].pos[0] - offset[0])/mult;
+  for (int i = 0; i < (int)polyMesh.nodes.size(); i++)
+  {
+    if (centreType == 0)
+      polyMesh.nodes[i].pos -= Vector3d(0.5, 0.5, 0);
+    polyMesh.nodes[i].pos[0] *= aspectRatio / mult;
+  }
 
   Matrix3d mat;
   mat = AngleAxis<double>(angle, Vector3d::UnitY());
-  //   if (k == 0)
-  //     mat /= mult; // so all bend angles start with same number of folds...
   mat *= mult;
   Matrix3d matrot = mat*rot;
   int k = 0;
   int folds = 0;
-  double x = 0.5; 
-  double y = 0.5; 
-  if (centreType == 1)
-  {
-    x = 0; y = 0;
-  }
-  else if (centreType == 2)
-  {
-    x = (double)(rand() % 1000) / 1000.0;
-    y = (double)(rand() % 1000) / 1000.0;
-  }
+  double x = 0;
+  double y = 0; 
+  srand(centreType);
   Vector3d offset(x, y, 0);
   vector <Node, Eigen::aligned_allocator<Node> > oldNodes;
   vector<Vector2d, Eigen::aligned_allocator<Vector2d> > edge0, edge1;
   do
   {
+    if (centreType >= 2 && !found) // irrational case
+    {
+      x = (double)(rand() % 1000) / 1000.0;
+      y = (double)(rand() % 1000) / 1000.0;
+      if (centreType == 0)
+      {
+        x -= 0.5;
+        y -= 0.5;
+      }
+      x *= aspectRatio;
+      offset = Vector3d(x, y, 0);
+    }
     oldNodes = polyMesh.nodes;
     for (int j = 0; j < (int)polyMesh.nodes.size(); j++)
       polyMesh.nodes[j].pos = offset + matrot*(polyMesh.nodes[j].pos - offset);
@@ -83,12 +87,17 @@ void generateCrumple(const string &fileName, int maxCorrugations, double bendAng
     double minHeight, maxHeight;
     folds = 0;
     cout << "generating level: " << k;
+    int f = 0;
     do
     {
       minHeight = 1e10;
       maxHeight = 0;
       bool reflect1 = polyMesh.reflect(Vector3d(0, 0, 0.5*scale), Vector3d(0, 0, -1));
+      if (reflect1)
+        f++;
       bool reflect2 = polyMesh.reflect(Vector3d(0, 0, -0.5*scale), Vector3d(0, 0, 1));
+      if (reflect2)
+        f++;
       if (!reflect1 && !reflect2)
         break;
       for (int j = 0; j<(int)polyMesh.nodes.size(); j++)
@@ -99,9 +108,9 @@ void generateCrumple(const string &fileName, int maxCorrugations, double bendAng
       folds++;
     } while (maxHeight > 0.5*scale + 0.00001 || minHeight < -0.5*scale - 0.00001);
     scale *= pow(2.0, yaw / pi);
-    cout << " folds: " << folds << endl;
+    cout << " folds: " << f << endl;
     k++;
-  } while /*(k < maxK); */ (folds > 0);
+  } while /*(k < 2); */ (folds > 0);
   polyMesh.nodes = oldNodes;
 
   if (fileName.find(".obj") != string::npos)
@@ -126,8 +135,10 @@ int _tmain(int argc, _TCHAR* argv[])
   int quotientNumerator = 1;
   int quotientDenominator = 2;
   double irrationalPiDivisor = 0;
+  double dimension = 0;
   int numCorrugations = 64;
   int centreType = 0;
+  double aspectRatio = 1.0;
   string fileName = "crumple.ply";
   for (int i = 1; i < argc; i++)
   {
@@ -137,10 +148,12 @@ int _tmain(int argc, _TCHAR* argv[])
     {
       cout << "crumpled surface mesh generator. Arguments:" << endl;
       cout << "-b - bend angle in degrees (45 is max), default 15" << endl;
+      cout << "-d - dimension of surface (alternative to bend angle), between 2 and 3" << endl;
       cout << "-y - yaw angle in degrees, default 90" << endl;
       cout << "-f - file name, default crumple.ply, use .obj to have texture coordinates" << endl;
       cout << "-c - number of highest resolution corrugations, default 64 (very slow beyond 256)" << endl;
-      cout << "-t - centre type: 0. centred in the middle, 1. centred at 0,0, 2. random each level, default 0" << endl;
+      cout << "-t - centre type: 0. centred in the middle, 1. centred at 0,0, 2+ random offset seed, default 0" << endl;
+      cout << "-a - aspect ratio, default 1" << endl;
       cout << "-h - help" << endl;
       return 0;
     }
@@ -149,8 +162,12 @@ int _tmain(int argc, _TCHAR* argv[])
     wstring warg2 = argv[++i];
     if (arg == "-b")
       bendAngle = stod(warg2);
+    else if (arg == "-d")
+      dimension = stod(warg2);
     else if (arg == "-y")
       yawAngle = stod(warg2);
+    else if (arg == "-a")
+      aspectRatio = stod(warg2);
     else if (arg == "-f")
       fileName = string(warg2.begin(), warg2.end());
     else if (arg == "-c")
@@ -164,8 +181,12 @@ int _tmain(int argc, _TCHAR* argv[])
     }
   }
 
+  if (dimension > 0)
+  {
+    bendAngle = acos(2.0 / pow(2.0, dimension/2.0)) * 180/pi;
+  }
 #if !defined(TESTS)
-  generateCrumple(fileName, numCorrugations, bendAngle, centreType, yawAngle);
+  generateCrumple(fileName, numCorrugations, bendAngle, centreType, yawAngle, aspectRatio);
 #else
   double bendAngle = pi / 6.0; // /16
   int varyMode = 0; // 0 is nothing, 1 is vary bend angle, 2 is vary yaw angle
